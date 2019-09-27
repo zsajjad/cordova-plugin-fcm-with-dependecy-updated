@@ -86,7 +86,7 @@ NSString *const kGCMMessageIDKey = @"gcm.message_id";
             // For iOS 10 display notification (sent via APNS)
             [UNUserNotificationCenter currentNotificationCenter].delegate = self;
             // For iOS 10 data message (sent via FCM)
-            [FIRMessaging messaging].remoteMessageDelegate = self;
+            [FIRMessaging messaging].delegate = self;
 #endif
         }
         
@@ -231,8 +231,6 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
                                                            options:0
                                                              error:&error];
         [FCMPlugin.fcmPlugin notifyOfMessage:jsonData];
-
-    // app is in background
     }
 
     completionHandler(UIBackgroundFetchResultNoData);
@@ -247,12 +245,17 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     // Note that this callback will be fired everytime a new token is generated, including the first
     // time. So if you need to retrieve the token as soon as it is available this is where that
     // should be done.
-    NSString *refreshedToken = [[FIRInstanceID instanceID] token];
-    NSLog(@"InstanceID token: %@", refreshedToken);
-    [FCMPlugin.fcmPlugin notifyOfTokenRefresh:refreshedToken];
-    // Connect to FCM since connection may have failed when attempted before having a token.
-    [self connectToFcm];
-
+    [[FIRInstanceID instanceID] instanceIDWithHandler:^(FIRInstanceIDResult * _Nullable result,
+                                                        NSError * _Nullable error) {
+        if (error != nil) {
+            return;
+        }
+        NSString *refreshedToken = result.token;
+        NSLog(@"InstanceID token: %@", refreshedToken);
+        [FCMPlugin.fcmPlugin notifyOfTokenRefresh:refreshedToken];
+        // Connect to FCM since connection may have failed when attempted before having a token.
+        [self connectToFcm];
+    }];
     // TODO: If necessary send token to appliation server.
 }
 // [END refresh_token]
@@ -260,24 +263,23 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 // [START connect_to_fcm]
 - (void)connectToFcm
 {
-    
     // Won't connect since there is no token
-    if (![[FIRInstanceID instanceID] token]) {
-        return;
-    }
-    
-    // Disconnect previous FCM connection if it exists.
-    [[FIRMessaging messaging] disconnect];
-    
-    [[FIRMessaging messaging] connectWithCompletion:^(NSError * _Nullable error) {
-        if (error != nil) {
-            NSLog(@"Unable to connect to FCM. %@", error);
-        } else {
-            NSLog(@"Connected to FCM.");
-            [[FIRMessaging messaging] subscribeToTopic:@"/topics/ios"];
-            [[FIRMessaging messaging] subscribeToTopic:@"/topics/all"];
-        }
-    }];
+//    if (![[FIRInstanceID instanceID] token]) {
+//        return;
+//    }
+//
+//    // Disconnect previous FCM connection if it exists.
+//    [[FIRMessaging messaging] disconnect];
+//
+//    [[FIRMessaging messaging] connectWithCompletion:^(NSError * _Nullable error) {
+//        if (error != nil) {
+//            NSLog(@"Unable to connect to FCM. %@", error);
+//        } else {
+//            NSLog(@"Connected to FCM.");
+//        }
+//    }];
+    [[FIRMessaging messaging] subscribeToTopic:@"/topics/ios"];
+    [[FIRMessaging messaging] subscribeToTopic:@"/topics/all"];
 }
 // [END connect_to_fcm]
 
@@ -292,7 +294,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 - (void)applicationDidEnterBackground:(UIApplication *)application
 {
     NSLog(@"app entered background");
-    [[FIRMessaging messaging] disconnect];
+//    [[FIRMessaging messaging] disconnect];
     [FCMPlugin.fcmPlugin appEnterBackground];
     NSLog(@"Disconnected from FCM");
 }

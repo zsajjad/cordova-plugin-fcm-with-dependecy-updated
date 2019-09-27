@@ -67,12 +67,20 @@ static FCMPlugin *fcmPluginInstance;
 - (void) getToken:(CDVInvokedUrlCommand *)command 
 {
     NSLog(@"get Token");
-    [self.commandDelegate runInBackground:^{
-        NSString* token = [[FIRInstanceID instanceID] token];
-        CDVPluginResult* pluginResult = nil;
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:token];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    [[FIRInstanceID instanceID] instanceIDWithHandler:^(FIRInstanceIDResult * _Nullable result,
+                                                        NSError * _Nullable error) {
+        if (error != nil) {
+            CDVPluginResult* pluginResult = nil;
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"null"];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        } else {
+            NSLog(@"Remote instance ID token: %@", result.token);
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                                              messageAsString:result.token];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
     }];
+
 }
 
 // UN/SUBSCRIBE TOPIC //
